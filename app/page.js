@@ -29,11 +29,22 @@ const style = {
 
 
 export default function Home() {
-  const [inventory, setInventory] = useState([])
-  const [open, setOpen] = useState(false)
-  const [itemName, setItemName] = useState('')
-  const handleOpen = () => setOpen(true)
-  const handleClose = () => setOpen(false)
+  const [openAddModal, setOpenAddModal] = useState(false);
+  const [openFindModal, setOpenFindModal] = useState(false);
+  const [itemName, setItemName] = useState('');
+  const [inventory, setInventory] = useState([]);
+  const [findResult, setFindResult] = useState(null);
+
+
+
+  const handleOpenAddModal = () => setOpenAddModal(true)
+  const handleCloseAddModal = () => setOpenAddModal(false);
+  const handleOpenFindModal = () => setOpenFindModal(true);
+  const handleCloseFindModal = () => {
+    setFindResult(null);
+    setItemName(''); // Clear the itemName when closing the modal
+    setOpenFindModal(false);
+  };
 
   const updateInventory = async () => {
     const snapshot = query(collection(firestore, 'inventory'))
@@ -60,6 +71,17 @@ export default function Home() {
     }
     await updateInventory()
   }
+
+  const findItem = async (item) => {
+    const docRef = doc(collection(firestore, 'inventory'), item);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const { quantity } = docSnap.data();
+      setFindResult({ name: item, quantity });
+    } else {
+      setFindResult('Item not found');
+    }
+  };
   
   const removeItem = async (item) => {
     const docRef = doc(collection(firestore, 'inventory'), item)
@@ -87,8 +109,8 @@ export default function Home() {
       gap={2}
     >
       <Modal
-        open={open}
-        onClose={handleClose}
+        open={openAddModal}
+        onClose={handleCloseAddModal}
         aria-labelledby="modal-modal-title"
         aria-describedby="modal-modal-description"
       >
@@ -110,7 +132,7 @@ export default function Home() {
               onClick={() => {
                 addItem(itemName)
                 setItemName('')
-                handleClose()
+                handleCloseAddModal()
               }}
             >
               Add
@@ -118,9 +140,58 @@ export default function Home() {
           </Stack>
         </Box>
       </Modal>
-      <Button variant="contained" onClick={handleOpen}>
+      <Button variant="contained" onClick={handleOpenAddModal}>
         Add New Item
       </Button>
+
+      <Modal
+        open={openFindModal}
+        onClose={() => {
+          setFindResult(null);
+          handleCloseFindModal();
+        }}
+        aria-labelledby="modal-find-title"
+        aria-describedby="modal-find-description"
+      >
+        <Box sx={style}>
+          <Typography id="modal-modal-title" variant="h6" component="h2">
+            Find Item
+          </Typography>
+          <Stack width="100%" direction={'row'} spacing={2}>
+            <TextField
+              id="outlined-basic"
+              label="Item"
+              variant="outlined"
+              fullWidth
+              value={itemName}
+              onChange={(e) => setItemName(e.target.value)}
+            />
+            <Button
+              variant="outlined"
+              onClick={() => {
+                findItem(itemName)
+              }}
+            >
+              Find
+            </Button>
+          </Stack>
+
+          {findResult && (
+            typeof findResult === 'string' ? (
+              <Typography variant="body1">{findResult}</Typography>
+            ) : (
+              <Typography variant="body1">
+                {`Name: ${findResult.name}, Quantity: ${findResult.quantity}`}
+              </Typography>
+            )
+          )}
+        </Box>
+      </Modal>
+      <Button variant="contained" onClick={handleOpenFindModal}>
+        Find Item
+      </Button>
+      
+      
       <Box border={'1px solid #333'}>
         <Box
           width="800px"
